@@ -1,0 +1,427 @@
+// using System;
+// using System.Collections;
+// using System.Collections.Generic;
+// using UnityEngine;
+// using System.Threading.Tasks;
+
+
+// public class RobotController : MonoBehaviour
+// {
+//     // wheel colliders
+//     [SerializeField] private WheelCollider WheelColliderFrontLeft;
+//     [SerializeField] private WheelCollider WheelColliderFrontRight;
+//     [SerializeField] private WheelCollider WheelColliderBackLeft;
+//     [SerializeField] private WheelCollider WheelColliderBackRight;
+//     // transforms for the wheels
+//     [SerializeField] private Transform TransformWheelFrontLeft;
+//     [SerializeField] private Transform TransformWheelFrontRight;
+//     [SerializeField] private Transform TransformWheelBackLeft;
+//     [SerializeField] private Transform TransformWheelBackRight;
+
+//     // transforms for the sensors
+//     [SerializeField] private Transform RaycastSensorFront;
+//     [SerializeField] private Transform RaycastSensorLeft;
+//     [SerializeField] private Transform RaycastSensorRight;
+//     [SerializeField] private Transform EulerAnglesSensor;
+    
+
+//     [SerializeField] private float maxSteerAngle = 25f;
+//     [SerializeField] private float motorForce = 5f;
+
+//     private Rigidbody rb;
+//     private float currentSteer = 0f;
+
+//     private void Start()
+//     {
+//         rb = GetComponent<Rigidbody>();
+
+//         // Sensor rotations (allowed by assignment)
+//         AdjustSensorRotation(RaycastSensorFront, 0, 0, 0);     // forward
+//         AdjustSensorRotation(RaycastSensorLeft, 0, -22f, 0);   // left angled
+//         AdjustSensorRotation(RaycastSensorRight, 0, 22f, 0);   // right angled
+//     }
+
+//     private void HandleMotor()
+//     {
+//         WheelColliderFrontLeft.motorTorque = motorForce;
+//         WheelColliderFrontRight.motorTorque = motorForce;
+//         WheelColliderBackLeft.motorTorque = motorForce;
+//         WheelColliderBackRight.motorTorque = motorForce;
+//     }
+
+//     private void HandleSteering(float direction)
+//     {
+//         currentSteer = maxSteerAngle * direction;
+//         WheelColliderFrontLeft.steerAngle = currentSteer;
+//         WheelColliderFrontRight.steerAngle = currentSteer;
+//     }
+
+//     private void UpdateWheel(WheelCollider wc, Transform wt)
+//     {
+//         Vector3 pos;
+//         Quaternion rot;
+//         wc.GetWorldPose(out pos, out rot);
+//         wt.position = pos;
+//         wt.rotation = rot;
+//     }
+
+//     private void UpdateWheels()
+//     {
+//         UpdateWheel(WheelColliderFrontLeft, TransformWheelFrontLeft);
+//         UpdateWheel(WheelColliderFrontRight, TransformWheelFrontRight);
+//         UpdateWheel(WheelColliderBackLeft, TransformWheelBackLeft);
+//         UpdateWheel(WheelColliderBackRight, TransformWheelBackRight);
+//     }
+
+//     private void AdjustSensorRotation(Transform sensor, float x, float y, float z)
+//     {
+//         sensor.transform.Rotate(x, y, z);
+//     }
+
+//     private void FixedUpdate()
+//     {
+
+//         // Perform sphere casts for road detection angled down (forward but on the ground)
+//         Vector3 roadDirFront = Quaternion.Euler(0, 0, 10) * RaycastSensorFront.forward;
+//         Vector3 roadDirLeft = Quaternion.Euler(-30f, -15, 0) * RaycastSensorLeft.forward;
+//         Vector3 roadDirRight = Quaternion.Euler(30f, 15, 0) * RaycastSensorRight.forward;
+//         RaycastHit hitRoadFront;
+//         bool roadFront = Physics.Raycast(RaycastSensorFront.position, roadDirFront, out hitRoadFront, 6f, LayerMask.GetMask("Road"));
+//         RaycastHit hitRoadLeft;
+//         bool roadLeft = Physics.Raycast(RaycastSensorLeft.position, roadDirLeft, out hitRoadLeft, 6f, LayerMask.GetMask("Road"));
+//         RaycastHit hitRoadRight;
+//         bool roadRight = Physics.Raycast(RaycastSensorRight.position, roadDirRight, out hitRoadRight, 6f, LayerMask.GetMask("Road"));
+//         // Perform raycasts first
+//         bool hitFront = Physics.Raycast(RaycastSensorFront.position, RaycastSensorFront.forward, 7f, LayerMask.GetMask("Obs"));
+//         bool hitLeft = Physics.Raycast(RaycastSensorLeft.position, RaycastSensorLeft.forward, 7f, LayerMask.GetMask("Obs"));
+//         bool hitRight = Physics.Raycast(RaycastSensorRight.position, RaycastSensorRight.forward, 7f, LayerMask.GetMask("Obs"));
+
+
+
+//         // Draw rays with color based on detection
+//         Debug.DrawRay(RaycastSensorFront.position, RaycastSensorFront.forward * 7f, hitFront ? Color.red : Color.white);
+//         Debug.DrawRay(RaycastSensorLeft.position, RaycastSensorLeft.forward * 7f, hitLeft ? Color.red : Color.white);
+//         Debug.DrawRay(RaycastSensorRight.position, RaycastSensorRight.forward * 7f, hitRight ? Color.red : Color.white);
+
+//         Debug.DrawRay(RaycastSensorFront.position, roadDirFront * 5f, roadFront ? Color.green : Color.yellow);
+//         Debug.DrawRay(RaycastSensorLeft.position, roadDirLeft * 5f, roadLeft ? Color.green : Color.yellow);
+//         Debug.DrawRay(RaycastSensorRight.position, roadDirRight * 5f, roadRight ? Color.green : Color.yellow);
+
+//         float steerDir = 0f;
+//         // Road steering logic
+//         if (!roadFront) motorForce = 2f;
+//         if (roadLeft && roadFront) steerDir = 1.32f;  // turn right 33 degrees
+//         else if (roadRight && roadFront) steerDir = -1.32f;  // turn left 33 degrees
+//         else if (roadLeft) steerDir = 0.8f;  // turn right 20 degrees
+//         else if (roadRight) steerDir = -0.8f;  // turn left 20 degrees
+//         else steerDir = 0f;
+        
+//         if (hitFront && hitLeft)
+//         {
+//             steerDir = 1f;          // turn right
+//             motorForce = 2f;        // slow down
+//         }
+//         else if (hitFront && hitRight)
+//         {
+//             steerDir = -1f;         // turn left
+//             motorForce = 2f;
+//         }
+//         else if (hitFront)
+//         {
+//             steerDir = hitLeft ? 1f : -1f;
+//             motorForce = 2f;
+//         }
+//         else if (hitLeft)
+//         {
+//             steerDir = 0.4f;
+//         }
+//         else if (hitRight)
+//         {
+//             steerDir = -0.4f;
+//         }
+//         else
+//         {
+//             steerDir = 0f;          // go straight
+//             motorForce = 5f;
+//         }
+
+//         if (!hitFront)
+//         {
+//             if (hitLeft && !hitRight)
+//                 steerDir += 0.2f;
+//             else if (hitRight && !hitLeft)
+//                 steerDir -= 0.2f;
+//         }
+        
+
+//         HandleMotor();        
+//         HandleSteering(steerDir);
+//         UpdateWheels();
+//     }
+//     // private void FixedUpdate()
+//     // {
+//     //     float dist = 6f;
+//     //     float radius = 0.6f;
+//     //     RaycastHit hit;
+//     //     Debug.DrawRay(RaycastSensorFront.position, RaycastSensorFront.forward * 7f, Color.red);
+//     //     Debug.DrawRay(RaycastSensorLeft.position, RaycastSensorLeft.forward * 7f, Color.green);
+//     //     Debug.DrawRay(RaycastSensorRight.position, RaycastSensorRight.forward * 7f, Color.blue);
+
+//     //     bool hitFront = Physics.SphereCast(RaycastSensorFront.position, radius, RaycastSensorFront.forward, out hit, dist);
+//     //     bool hitLeft  = Physics.SphereCast(RaycastSensorLeft.position, radius, RaycastSensorLeft.forward, out hit, dist);
+//     //     bool hitRight = Physics.SphereCast(RaycastSensorRight.position, radius, RaycastSensorRight.forward, out hit, dist);
+
+//     //     float steerDir = 0f;
+
+//     //     // Highest priority: obstacle ahead
+//     //     if (hitFront)
+//     //     {
+//     //         motorForce = 2f;                 // slow down
+//     //         steerDir = hitLeft ? 1f : -1f;   // turn away
+//     //     }
+//     //     else
+//     //     {
+//     //         motorForce = 6f;                 // normal speed
+
+//     //         if (hitLeft)  steerDir = 0.6f;
+//     //         if (hitRight) steerDir = -0.6f;
+//     //     }
+
+//     //     HandleMotor();
+//     //     HandleSteering(steerDir);
+//     //     UpdateWheels();
+//     // }
+
+// }
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class RobotController : MonoBehaviour
+{
+    // --- REQUIRED VARIABLES ---
+    [SerializeField] private WheelCollider WheelColliderFrontLeft;
+    [SerializeField] private WheelCollider WheelColliderFrontRight;
+    [SerializeField] private WheelCollider WheelColliderBackLeft;
+    [SerializeField] private WheelCollider WheelColliderBackRight;
+
+    [SerializeField] private Transform TransformWheelFrontLeft;
+    [SerializeField] private Transform TransformWheelFrontRight;
+    [SerializeField] private Transform TransformWheelBackLeft;
+    [SerializeField] private Transform TransformWheelBackRight;
+
+    [SerializeField] private Transform RaycastSensorFront;
+    [SerializeField] private Transform RaycastSensorLeft;
+    [SerializeField] private Transform RaycastSensorRight;
+    [SerializeField] private Transform EulerAnglesSensor;
+
+    // --- SETTINGS ---
+    [Header("Tuning")]
+    [SerializeField] private float maxSteerAngle = 40f;
+    [SerializeField] private float motorForce = 400f;
+    [SerializeField] private float brakeForce = 0f;
+
+    // Sensor Distances
+    private float s1dist = 10f;  // Obstacle distance
+    private float s2dist = 12f;   // Road Short distance
+    private float s3dist = 12f;  // Road Long distance
+    private float rcfrdist = 12f; // Front Road distance
+
+    private Rigidbody rb;
+    private bool EndOfRoadF = false;
+    private int EndOfRoadCntr = 0;
+    private float velocity;
+
+    private void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        
+        // Reset sensor rotations to ensure our math works cleanly
+        if(RaycastSensorFront) RaycastSensorFront.localRotation = Quaternion.identity;
+        if(RaycastSensorLeft) RaycastSensorLeft.localRotation = Quaternion.identity;
+        if(RaycastSensorRight) RaycastSensorRight.localRotation = Quaternion.identity;
+    }
+
+    // --- FIXED SENSOR LOGIC ---
+    private bool Sense(Transform sensorBase, float angleY, float dist, string layerName)
+    {
+        float angleX = 0f;
+
+        // If checking for Road, we MUST look down.
+        // 35 degrees down is usually safer than 45 to see further ahead.
+        if (layerName == "Road") 
+        {
+            angleX = 13f; 
+        }
+
+        // 1. Calculate the direction in LOCAL space (relative to the sensor)
+        // This creates a vector pointing slightly down and to the side
+        Quaternion localRotation = Quaternion.Euler(angleX, angleY, 0);
+        Vector3 localDirection = localRotation * Vector3.forward;
+
+        // 2. Convert that local direction to WORLD space
+        // This ensures the ray rotates WITH the car
+        Vector3 worldDirection = sensorBase.TransformDirection(localDirection);
+
+        int layerMask = LayerMask.GetMask(layerName);
+        bool hit = Physics.Raycast(sensorBase.position, worldDirection, dist, layerMask);
+
+        // Visual Debugging
+        Debug.DrawRay(sensorBase.position, worldDirection * dist, hit ? Color.green : Color.red);
+        
+        return hit;
+    }
+
+    // --- MOVEMENT HANDLERS ---
+    private void HandleCarSteerWheel(float direction)
+    {
+        float steer = maxSteerAngle * direction;
+        WheelColliderFrontLeft.steerAngle = steer;
+        WheelColliderFrontRight.steerAngle = steer;
+    }
+
+    private void HandleCarDrive()
+    {
+        WheelColliderFrontLeft.motorTorque = motorForce;
+        WheelColliderFrontRight.motorTorque = motorForce;
+        WheelColliderBackLeft.motorTorque = motorForce;
+        WheelColliderBackRight.motorTorque = motorForce;
+        
+        WheelColliderFrontLeft.brakeTorque = brakeForce;
+        WheelColliderFrontRight.brakeTorque = brakeForce;
+        WheelColliderBackLeft.brakeTorque = brakeForce;
+        WheelColliderBackRight.brakeTorque = brakeForce;
+    }
+
+    private void UpdateWheel(WheelCollider wc, Transform wt)
+    {
+        Vector3 pos; Quaternion rot;
+        wc.GetWorldPose(out pos, out rot);
+        wt.position = pos;
+        wt.rotation = rot;
+    }
+
+    private void UpdateWheels()
+    {
+        UpdateWheel(WheelColliderFrontLeft, TransformWheelFrontLeft);
+        UpdateWheel(WheelColliderFrontRight, TransformWheelFrontRight);
+        UpdateWheel(WheelColliderBackLeft, TransformWheelBackLeft);
+        UpdateWheel(WheelColliderBackRight, TransformWheelBackRight);
+    }
+
+    // --- AI LOGIC ---
+    private void AvoidObstacles()
+    {
+        // Obstacle checks look STRAIGHT (angleX = 0 inside Sense)
+        bool hitRightObs = Sense(RaycastSensorRight, 15f, s1dist, "Obs");
+        bool hitLeftObs = Sense(RaycastSensorLeft, -15f, s1dist, "Obs");
+        bool hitFrontObs = Sense(RaycastSensorFront, 0f, s1dist, "Obs");
+
+        if (hitFrontObs)
+        {
+             // If obstacle directly ahead, steer hard away
+             HandleCarSteerWheel(hitLeftObs ? 1 : -1); 
+             brakeForce = 100f; // Tap brakes slightly
+        }
+        else if (hitRightObs)
+        {
+            HandleCarSteerWheel(-0.5f); // Steer Left slightly
+        }
+        else if (hitLeftObs)
+        {
+            HandleCarSteerWheel(0.5f);  // Steer Right slightly
+        }
+    }
+
+    private void StayOnLane()
+    {
+        // Road checks look DOWN (angleX = 35 inside Sense)
+        
+        // Inner Sensors (Short range to keep us centered)
+        bool senseShortLeft = Sense(RaycastSensorLeft, -15f, s2dist, "Road");
+        bool senseShortRight = Sense(RaycastSensorRight, 15f, s2dist, "Road");
+        
+        // Outer Sensors (Long range to detect turns early)
+        bool senseLongLeft  = Sense(RaycastSensorLeft, -35f, s3dist, "Road");
+        bool senseLongRight  = Sense(RaycastSensorRight, 35f, s3dist, "Road");
+        
+        // Front Sensor
+        bool senseRCFR = Sense(RaycastSensorFront, 0f, rcfrdist, "Road");
+
+        if (!senseRCFR && !senseShortLeft && !senseShortRight)
+        {
+            // Complete loss of road
+            EndOfRoadCntr++;
+            if (EndOfRoadCntr > 15) EndOfRoadF = true;
+        }
+        else
+        {
+            EndOfRoadCntr = 0;
+            EndOfRoadF = false;
+
+            // Lane Keep Logic
+            if (!senseLongRight)
+            {
+                HandleCarSteerWheel(-1f); // Turn Left
+            }
+            else if (!senseLongLeft)
+            {
+                HandleCarSteerWheel(1f);  // Turn Right
+            }
+            else
+            {
+                HandleCarSteerWheel(0); // Center
+            }
+        }
+    }
+
+    private void AdjustCarAcceleration()
+    {
+        // Simple Cruise Control
+        if (velocity > 6) motorForce = 0; // Coast
+        else if (velocity < 4) motorForce = 350; // Power up
+    }
+
+    private void EndOfTrack()
+    {
+        if (EndOfRoadF)
+        {
+            brakeForce = 500f;
+            motorForce = 0f;
+        }
+    }
+    
+    private void AdjustForSlope()
+    {
+        if (EulerAnglesSensor != null) {
+            float pitch = EulerAnglesSensor.eulerAngles.x;
+            if (pitch > 180f) pitch -= 360f;
+            
+            // If climbing hill (pitch > 5), boost power significantly
+            if (pitch > 5f) motorForce = 350f;
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        // UNITY 6 Compatibility:
+        // Use 'linearVelocity' for Unity 6. Use 'velocity' for older Unity.
+        #if UNITY_6000_0_OR_NEWER
+            velocity = rb.linearVelocity.magnitude;
+        #else
+            velocity = rb.velocity.magnitude;
+        #endif
+
+        brakeForce = 0f; // Reset Brakes
+
+        StayOnLane();
+        AvoidObstacles(); 
+        AdjustCarAcceleration();
+        AdjustForSlope();
+        EndOfTrack();
+        
+        HandleCarDrive();
+        UpdateWheels();
+    }
+}
